@@ -1,69 +1,89 @@
-import time
-
+import numpy as np
 import cv2
-
-
-def image_processing():
-    img = cv2.imread('img_test.jpg')
-    #cv2.imshow('image', img)
-    w, h = img.shape[:2]
-    #(cX, cY) = (w // 2, h // 2)
-    #M = cv2.getRotationMatrix2D((cX, cY), 45, 1.0)
-    #rotated = cv2.warpAffine(img, M, (w, h))
-    #cv2.imshow('rotated', rotated)
-
-    #cat = img[250:580, 20:280]
-    #cv2.imshow('image', cat)
-
-    #r = cv2.selectROI(img)
-    #image_cropped = img[int(r[1]):int(r[1] + r[3]), int(r[0]):int(r[0] + r[2])]
-    #cv2.imshow('cropped', image_cropped)
-
-    cv2.line(img, (0, 0), (580, 600), (255, 0, 0), 5)
-    cv2.rectangle(img, (384, 10), (580, 128), (0, 252, 0), 3)
-    cv2.putText(img, 'Lab. No 8', (10, 500), cv2.FONT_HERSHEY_SIMPLEX, 3,
-                (0, 0, 255), 2, cv2.LINE_AA)
-    cv2.imshow('img', img)
-
-
-def video_processing():
-    cap = cv2.VideoCapture(1)
-    down_points = (640, 480)
-    i = 0
+##Вариант №3
+def task_1():
+    img = cv2.imread('images/variant-3.jpeg')
+    # изменяем размер изображения на более удобный
+    img = cv2.resize(img, dsize=(500,300),fx= 30, fy=10)
+    img_HSV = cv2.cvtColor(img, cv2.COLOR_RGB2HSV) 
+    cv2.imshow('image', img_HSV)
+#
+#
+#
+def task_2_3():#второе и третье задание.(Работают только на довольно близком расстоянии) 
+    video = cv2.VideoCapture(0)
+    image= cv2.imread('ref-point.jpg',0)
+    imagesize = image.shape[:2]
     while True:
-        ret, frame = cap.read()
+        ret, frame = video.read()
         if not ret:
             break
-
-        frame = cv2.resize(frame, down_points, interpolation=cv2.INTER_LINEAR)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (21, 21), 0)
-        ret, thresh = cv2.threshold(gray, 110, 255, cv2.THRESH_BINARY_INV)
-
-        contours, hierarchy = cv2.findContours(thresh,
-                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        if len(contours) > 0:
-            c = max(contours, key=cv2.contourArea)
-            x, y, w, h = cv2.boundingRect(c)
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            if i % 5 == 0:
-                a = x + (w // 2)
-                b = y + (h // 2)
-                print(a, b)
-
+        threshold = 0.5
+        result = cv2.matchTemplate(gray, image, cv2.TM_CCOEFF_NORMED)
+        locations = []
+        for y,x in zip(*np.where(result >= threshold)):
+            locations.append((x, y))
+        for loc in locations:
+            cv2.rectangle(frame, (loc[0], loc[1]), (loc[0]+imagesize[0],loc[1]+imagesize[1]), (0, 255, 255), 3)
+        #Реализация третьего задания
+        framesize = frame.shape
+        rectsize = (200,200)
+        cordsOfRect = (framesize[1]//2 - rectsize[0]//2, framesize[0]//2- rectsize[1]//2)
+        cv2.rectangle(frame,(cordsOfRect[0], cordsOfRect[1]), (cordsOfRect[0] + rectsize[0], cordsOfRect[1]+rectsize[1]), (255,255 , 255), 3)
+        for loc in locations:
+            if (cordsOfRect[0] < loc[0]+imagesize[0]//2 <cordsOfRect[0] + rectsize[0]) and (cordsOfRect[1] < loc[1]+imagesize[1]//2 <cordsOfRect[1] + rectsize[1]):
+                cv2.rectangle(frame,(cordsOfRect[0], cordsOfRect[1]), (cordsOfRect[0] + rectsize[0], cordsOfRect[1]+rectsize[1]), (255,0, 0), 3)
         cv2.imshow('frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            break
+    video.release()
+#
+#
+#
+def task4():#дополнительное задание 
+    video = cv2.VideoCapture(0)
+    image= cv2.imread('ref-point.jpg',0)
+    imagesize = image.shape[:2]
+    while True:
+        ret, frame = video.read()
+        if not ret:
+            break
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        threshold = 0.5
+        result = cv2.matchTemplate(gray, image, cv2.TM_CCOEFF_NORMED)
+        locations = []
+        for y,x in zip(*np.where(result >= threshold)):
+            locations.append((x, y))
+        for loc in locations:
+            cv2.rectangle(frame, (loc[0], loc[1]), (loc[0]+imagesize[0],loc[1]+imagesize[1]), (0, 255, 255), 3)
+        #
+        #
+        #
+        flyimage = cv2.imread('fly64.png')
+        flyshape = flyimage.shape[:2]
+        for loc in locations:
+            x,y = loc
+            x += imagesize[1]//2-flyshape[1]//2
+            y += imagesize[0]//2-flyshape[0]//2
+            try:
+                frame[y:y+ flyshape[0],x:x+ flyshape[1]] = flyimage[:,:]
+            except:
+                print('Oops, something go wrong')
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(10) & 0xFF == ord('q'):
             break
 
-        time.sleep(0.1)
-        i += 1
-
-    cap.release()
-
+    video.release()
+#
+#
+#
 
 if __name__ == '__main__':
-    #image_processing()
-    video_processing()
+    task_1()
+#    task_2_3()
+#    task4()
+
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
